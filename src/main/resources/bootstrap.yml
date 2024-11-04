@@ -1,7 +1,0 @@
-spring:
-  cloud:
-    config:
-      uri: http://config-server:9999
-      failFast: true
-      retry:
-        maxAttempts: 20
