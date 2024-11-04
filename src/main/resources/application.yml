@@ -1,0 +1,66 @@
+server:
+  port: 9990
+spring:
+  datasource:
+    driver-class-name: ${DRIVER_CLASS_NAME:org.postgresql.Driver}
+    url: ${DATASOURCE_URL:jdbc:postgresql://localhost:5432/chat-service}
+    username: ${DATASOURCE_USERNAME:postgres}
+    password: ${DATASOURCE_PASSWORD:postgres}
+    hikari:
+      schema: public
+  application:
+    name: Chat-Service
+  config:
+    import: optional:configserver:${CONFIG_SERVER_ENDPOINT:http://localhost:9999}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    template:
+      default-topic: chat-deleted
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      properties:
+        schema:
+          registry:
+            url: ${KAFKA_SCHEMA_REGISTRY_URL:http://127.0.0.1:8085}
+      value-serializer: io.confluent.kafka.serializers.KafkaAvroSerializer
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      content:
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        failureRateThreshold: 50
+        minimum-number-of-calls: 5
+        slidingWindowType: COUNT_BASED
+        event-consumer-buffer-size: '10'
+        registerHealthIndicator: 'true'
+        waitDurationInOpenState: 5s
+        permittedNumberOfCallsInHalfOpenState: '3'
+        slidingWindowSize: '5'
+  retry:
+    instances:
+      inventory:
+        wait-duration: 5s
+        max-attempts: '3'
+  timelimiter:
+    instances:
+      inventory:
+        timeout-duration: 3s
+
+#  jpa:
+#    database-platform: ${JPA_DATABASE_PLATFORM:org.hibernate.dialect.PostgreSQLDialect}
+#    hibernate:
+#      ddl-auto: ${HIBERNATE_DDL_AUTO:update}
+#      naming:
+#        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+#    properties:
+#      hibernate:
+#        format_sql: ${HIBERNATE_FORMAT_SQL:true}
+#        show_sql: ${HIBERNATE_SHOW_SQL:false}
+#        use_sql_comments: ${HIBERNATE_USE_SQL_COMMENTS:false}
+#        transaction:
+#          jta:
+#            platform: org.hibernate.service.jta.platform.internal.NoJtaPlatform
+#        jdbc:
+#          lob:
+#            non_contextual_creation: true
