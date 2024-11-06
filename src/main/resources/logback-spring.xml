@@ -3,6 +3,7 @@
     <include resource="org/springframework/boot/logging/logback/base.xml"/>
     <springProperty scope="context" name="appName" source="spring.application.name"/>
     <springProperty scope="context" name="lokiUrl" source="loki.url"/>
+    <springProperty scope="context" name="logstashUrl" source="logstash.url"/>
 
     <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
         <http>
@@ -18,8 +19,23 @@
             <sortByTime>true</sortByTime>
         </format>
     </appender>
+    <appender name="LOGSTASH" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
+        <destination>${logstashUrl}</destination>
+        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+                <timestamp/>
+                <logLevel/>
+                <threadName/>
+                <loggerName/>
+                <message/>
+                <stackTrace/>
+                <mdc/>
+            </providers>
+        </encoder>
+    </appender>
 
     <root level="INFO">
         <appender-ref ref="LOKI"/>
+        <appender-ref ref="LOGSTASH"/>
     </root>
 </configuration>
