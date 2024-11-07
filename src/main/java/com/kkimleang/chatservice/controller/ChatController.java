@@ -4,6 +4,7 @@ import com.kkimleang.chatservice.dto.ChatRequest;
 import com.kkimleang.chatservice.dto.ChatResponse;
 import com.kkimleang.chatservice.dto.ContentResponse;
 import com.kkimleang.chatservice.dto.Response;
+import com.kkimleang.chatservice.exception.*;
 import com.kkimleang.chatservice.service.ChatService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,7 +23,15 @@ public class ChatController {
 
     @GetMapping("/of-users/{userId}")
     public Response<List<ChatResponse>> getAllChats(@PathVariable UUID userId) {
-        return Response.<List<ChatResponse>>ok().setPayload(chatService.getAllChatsByUserId(userId));
+        try {
+            return Response.<List<ChatResponse>>ok().setPayload(chatService.getAllChatsByUserId(userId));
+        } catch (ResourceAccessDeniedException e) {
+            return Response.<List<ChatResponse>>accessDenied().setErrors(e.getMessage());
+        } catch (ResourceNotFoundException e) {
+            return Response.<List<ChatResponse>>notFound().setErrors(e.getMessage());
+        } catch (Exception e) {
+            return Response.<List<ChatResponse>>exception().setErrors(e.getMessage());
+        }
     }
 
     @PostMapping
@@ -89,4 +98,4 @@ public class ChatController {
             return Response.<List<ContentResponse>>exception().setErrors(e.getMessage());
         }
     }
- }
+}

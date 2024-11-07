@@ -4,11 +4,12 @@ import com.kkimleang.chatservice.client.ContentFeignClient;
 import com.kkimleang.chatservice.client.UserFeignClient;
 import com.kkimleang.chatservice.dto.*;
 import com.kkimleang.chatservice.event.ChatDeletedEvent;
-import com.kkimleang.chatservice.exception.ResourceNotFoundException;
+import com.kkimleang.chatservice.exception.*;
 import com.kkimleang.chatservice.model.Chat;
 import com.kkimleang.chatservice.repository.ChatRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.*;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
@@ -19,6 +20,7 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class ChatServiceImpl implements ChatService {
+    private static final Logger log = LoggerFactory.getLogger(ChatServiceImpl.class);
     private final ChatRepository chatRepository;
     private final UserFeignClient userFeignClient;
     private final ContentFeignClient contentFeignClient;
@@ -56,19 +58,21 @@ public class ChatServiceImpl implements ChatService {
     @Override
     public Boolean deleteChat(String chatId) {
         Chat chat = chatRepository.findById(chatId).orElseThrow(() -> new ResourceNotFoundException("Chat not found"));
-        chatRepository.delete(chat);
         Response<UserResponse> user = userFeignClient.getUserProfile(chat.getUserId());
-        if (user != null && user.isSuccess() && user.getPayload() != null) {
-            UserResponse userResponse = user.getPayload();
-            ChatDeletedEvent chatDeletedEvent = new ChatDeletedEvent(
-                    chat.getId(),
-                    chat.getTitle(),
-                    userResponse.getUsername(),
-                    userResponse.getEmail(),
-                    chat.getCreatedAt().toString()
-            );
-            kafkaTemplate.send("chat-deleted", chatDeletedEvent);
+        boolean isOwner = isUserIsOwnerOfChat(chat.getUserId());
+        if (!isOwner) {
+            throw new ResourceAccessDeniedException("You are not allowed to access this resource");
         }
+        chatRepository.delete(chat);
+        UserResponse userResponse = user.getPayload();
+        ChatDeletedEvent chatDeletedEvent = new ChatDeletedEvent(
+                chat.getId(),
+                chat.getTitle(),
+                userResponse.getUsername(),
+                userResponse.getEmail(),
+                chat.getCreatedAt().toString()
+        );
+        kafkaTemplate.send("chat-deleted", chatDeletedEvent);
         return true;
     }
 
@@ -133,21 +137,37 @@ public class ChatServiceImpl implements ChatService {
     @Transactional
     @Override
     public List<ChatResponse> getAllChatsByUserId(UUID userId) {
-        List<Chat> chats = chatRepository.findAllByUserId(userId);
-        return ChatResponse.fromChatsWithoutContents(chats);
+        boolean isOwner = isUserIsOwnerOfChat(userId);
+        if (isOwner) {
+            List<Chat> chats = chatRepository.findAllByUserId(userId);
+            return ChatResponse.fromChatsWithoutContents(chats);
+        } else {
+            throw new ResourceAccessDeniedException("You are not allowed to access this resource");
+        }
     }
 
     @Override
     public Response<List<ContentResponse>> getAllContentsByChatId(UUID chatId) {
         try {
-            Response<List<ContentResponse>> contents = contentFeignClient.getAllContentsByChatId(chatId);
-            if (contents.isSuccess()) {
-                return Response.<List<ContentResponse>>ok().setPayload(contents.getPayload());
+            Chat chat = chatRepository.findById(chatId.toString()).orElseThrow(() -> new ResourceNotFoundException("Chat not found"));
+            boolean isOwner = isUserIsOwnerOfChat(chat.getUserId());
+            if (isOwner) {
+                Response<List<ContentResponse>> contents = contentFeignClient.getAllContentsByChatId(chatId);
+                if (contents.isSuccess()) {
+                    return Response.<List<ContentResponse>>ok().setPayload(contents.getPayload());
+                } else {
+                    return Response.<List<ContentResponse>>exception().setErrors(contents.getErrors());
+                }
             } else {
-                return Response.<List<ContentResponse>>exception().setErrors(contents.getErrors());
+                return Response.<List<ContentResponse>>accessDenied().setErrors("You are not allowed to access this resource");
             }
         } catch (Exception e) {
             return Response.<List<ContentResponse>>exception().setErrors(e.getMessage());
         }
+    }
+
+    private boolean isUserIsOwnerOfChat(UUID userId) {
+        Response<UserResponse> response = userFeignClient.getMyProfile();
+        return response.isSuccess() && response.getPayload().getId().equals(userId);
     }
 }

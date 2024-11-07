@@ -17,14 +17,23 @@ public interface UserFeignClient {
     Logger log = Logger.getLogger(UserFeignClient.class.getName());
 
     @GetMapping("/api/auth/user/{userId}/profile")
-    @CircuitBreaker(name = "content", fallbackMethod = "fallbackGetUserProfile")
-    @Retry(name = "content")
+    @CircuitBreaker(name = "user-profile", fallbackMethod = "fallbackGetUserProfile")
+    @Retry(name = "user-profile")
     Response<UserResponse> getUserProfile(@PathVariable UUID userId);
+
+    @GetMapping("/api/auth/user/me")
+    @CircuitBreaker(name = "user-info", fallbackMethod = "fallbackGetUserInfo")
+    @Retry(name = "user-info")
+    Response<UserResponse> getMyProfile();
 
     default Response<UserResponse> fallbackGetUserProfile(UUID userId, Throwable throwable) {
         log.info("Fallback method for getUserProfile(UUID userId) in UserFeignClient: " + throwable.getMessage());
         return Response.<UserResponse>notFound().setErrors(throwable.getMessage());
     }
 
+    default Response<UserResponse> fallbackGetUserInfo(Throwable throwable) {
+        log.info("Fallback method for getMyProfile() in UserFeignClient: " + throwable.getMessage());
+        return Response.<UserResponse>notFound().setErrors(throwable.getMessage());
+    }
 }
 
