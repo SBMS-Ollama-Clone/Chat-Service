@@ -58,7 +58,7 @@ public class ChatServiceImpl implements ChatService {
     @Override
     public Boolean deleteChat(String chatId) {
         Chat chat = chatRepository.findById(chatId).orElseThrow(() -> new ResourceNotFoundException("Chat not found"));
-        Response<UserResponse> user = userFeignClient.getUserProfile(chat.getUserId());
+        Response<UserResponse> user = userFeignClient.getMyProfile();
         boolean isOwner = isUserIsOwnerOfChat(chat.getUserId());
         if (!isOwner) {
             throw new ResourceAccessDeniedException("You are not allowed to access this resource");
@@ -73,6 +73,8 @@ public class ChatServiceImpl implements ChatService {
                 chat.getCreatedAt().toString()
         );
         kafkaTemplate.send("chat-deleted", chatDeletedEvent);
+        // Delete associated contents
+        contentFeignClient.deleteContentsByChatId(UUID.fromString(chatId));
         return true;
     }
 

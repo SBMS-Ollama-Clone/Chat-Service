@@ -5,6 +5,7 @@ import com.kkimleang.chatservice.dto.Response;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
 import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 
@@ -25,4 +26,7 @@ public interface ContentFeignClient {
         log.info("Fallback method for getAllContentsByChatId(UUID chatId) in ContentFeignClient: " + throwable.getMessage());
         return Response.<List<ContentResponse>>notFound().setErrors(throwable.getMessage());
     }
+
+    @DeleteMapping("/api/contents/{chatId}/delete/all")
+    void deleteContentsByChatId(@PathVariable UUID chatId);
 }
