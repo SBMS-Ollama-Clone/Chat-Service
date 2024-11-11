@@ -53,23 +53,14 @@ public class ChatController {
         }
     }
 
-    @PutMapping("/{chatId}/rename/of-users/{userId}")
-    public Response<ChatResponse> renameChat(@PathVariable String chatId, @PathVariable UUID userId, @RequestBody ChatRequest chatRequest) {
+    @PutMapping("/{chatId}/rename")
+    public Response<ChatResponse> renameChat(@PathVariable String chatId, @RequestBody ChatRequest chatRequest) {
         try {
-            chatRequest.setUserId(userId);
-            ChatResponse chatResponse = chatService.getChatById(chatId);
-            if (chatResponse == null) {
-                return Response.<ChatResponse>notFound().setErrors("Chat with " + chatId + " not found");
+            ChatResponse updatedChat = chatService.updateChat(chatId, chatRequest);
+            if (updatedChat == null) {
+                return Response.<ChatResponse>exception().setErrors("Failed to rename chat with " + chatId);
             } else {
-                if (!Objects.equals(chatResponse.getUserId(), userId)) {
-                    return Response.<ChatResponse>accessDenied().setErrors("You are not allowed to rename chat with " + chatId);
-                }
-                ChatResponse updatedChat = chatService.updateChat(chatId, chatRequest);
-                if (updatedChat == null) {
-                    return Response.<ChatResponse>exception().setErrors("Failed to rename chat with " + chatId);
-                } else {
-                    return Response.<ChatResponse>ok().setPayload(updatedChat);
-                }
+                return Response.<ChatResponse>ok().setPayload(updatedChat);
             }
         } catch (Exception e) {
             return Response.<ChatResponse>exception().setErrors(e.getMessage());

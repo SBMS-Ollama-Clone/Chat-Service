@@ -49,10 +49,14 @@ public class ChatServiceImpl implements ChatService {
     @Override
     public ChatResponse updateChat(String chatId, ChatRequest chat) {
         Chat updateChat = chatRepository.findById(chatId).orElseThrow(() -> new ResourceNotFoundException("Chat not found"));
-        updateChat.setTitle(chat.getTitle());
-        updateChat.setUserId(chat.getUserId());
-        updateChat = chatRepository.save(updateChat);
-        return ChatResponse.fromChat(updateChat, null);
+        if (isUserIsOwnerOfChat(updateChat.getUserId())) {
+            updateChat.setTitle(chat.getTitle());
+            updateChat.setUserId(updateChat.getUserId());
+            updateChat = chatRepository.save(updateChat);
+            return ChatResponse.fromChat(updateChat, null);
+        } else {
+            throw new ResourceAccessDeniedException("You are not allowed to access this resource");
+        }
     }
 
     @Override
