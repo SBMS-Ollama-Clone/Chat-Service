@@ -29,7 +29,7 @@ This service is responsible for handling chat of users and save in the `chat-ser
 Our sample microservices-based system consists of the following modules:
 
 - **Gateway Service** - the main entry point into the system. This is where all incoming requests are routed to the
-  appropriate microservice. Port 8080.
+  appropriate microservice. Port 8880.
 - **Config Server** - responsible for keeping the configuration of all services in the system. Port 8888.
 - **Auth Service** - responsible for user authentication and authorization. Port 8888.
 - **Chat Service** - responsible for handling chat of users and save in the `chat-service` DB. Port 9990.
